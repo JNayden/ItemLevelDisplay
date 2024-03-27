@@ -1,0 +1,11 @@
+## Interface: 40300
+## Title: ItemLevelDisplay - Cata 4.3.4
+## Version: 1.0.0
+## Notes: Display average item level of the player. There is no configuration tab.
+## Author: Nayden
+## SavedVariables: PlayerName
+
+ItemLevelDisplay.lua
+
+ItemLevelDisplayConfig.xml
+

@@ -1,0 +1,19 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+
+	<Frame name="Atr_UIOptionsFrame">
+		<Scripts>
+			<OnLoad>
+				self.name = "HelloWorld"
+				InterfaceOptions_AddCategory(self);
+			</OnLoad>
+			<OnShow>
+				local f = _G["Atr_BasicOptionsFrame"];
+				if (f) then
+					InterfaceOptionsFrame_OpenToCategory (f)
+					self:Hide();
+					print("Hello World!")
+				end
+			</OnShow>
+		</Scripts>
+	</Frame>
+</Ui>
