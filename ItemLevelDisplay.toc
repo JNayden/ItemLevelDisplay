@@ -7,5 +7,5 @@
 
 ItemLevelDisplay.lua
 
-ItemLevelDisplayConfig.xml
+## ItemLevelDisplayConfig.xml
 

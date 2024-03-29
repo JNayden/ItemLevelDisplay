@@ -1,8 +1,13 @@
-local frame = CreateFrame("Frame")
 
-local inspectedUnit -- Variable to store the unit being inspected
-local itemLevelFrame -- Frame for displaying item level
 
+print("###[Addon Title: " .. "ItemLevelDisplay 4.3.4]###")
+print("--[ Item frame usage: ]--")
+print("--[ Lock: /il l ]--")
+print("--[ Unlock: /il ul ]--")
+print("--[ Reset position: /il rs ]--")
+-- print("Version: " .. "1.0.0")
+-- print("Interface Version: " .. "40300")
+-- print("Author: " .. "Nayden")
 local function GetAverageItemLevel(unit)
     local totalItemLevel = 0
     local numItems = 0
@@ -30,6 +35,7 @@ local function CreateItemLevelFrame()
         itemLevelFrame = CreateFrame("Frame", "MyAddon_ItemLevelFrame", UIParent)
         itemLevelFrame:SetSize(200, 75)
         itemLevelFrame:SetPoint("BOTTOMRIGHT", -300, 100)
+        itemLevelFrame:EnableMouse(true)
         
         itemLevelFrame.text = itemLevelFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         itemLevelFrame.text:SetAllPoints(itemLevelFrame)
@@ -47,10 +53,12 @@ local function CreateItemLevelFrame()
         }
         
         -- Apply the backdrop to the item frame
+        itemLevelFrame:SetMovable(true)
         itemLevelFrame:SetBackdrop(backdrop)
-        
-        -- Optional: Set backdrop color
-        -- itemLevelFrame:SetBackdropColor(1, 1, 0, 1) -- Adjust the color and opacity as needed
+        itemLevelFrame:RegisterForDrag("LeftButton");
+        itemLevelFrame:SetScript("OnDragStart", itemLevelFrame.StartMoving) 
+        itemLevelFrame:SetScript("OnDragStop", itemLevelFrame.StopMovingOrSizing)
+        itemLevelFrame:SetClampedToScreen(true)
     end
 end
 
@@ -94,12 +102,6 @@ local function UpdateItemLevel(unit)
         CreateItemLevelFrame()
     end
     
-    -- if unit == "player" or unit == nil then -- Check if it's the player or if the unit is nil (e.g., during an inspection)
-    --     itemLevelFrame.text:SetText("") -- Clear the text
-    --     itemLevelFrame:Hide() -- Hide the frame
-    --     return
-    -- end
-    
     local averageItemLevel = GetAverageItemLevel(unit)
     if averageItemLevel > 0 then -- Only display if the item level is greater than 0
 		SetTextColor(averageItemLevel)
@@ -122,50 +124,33 @@ local function InspectPlayer(unit)
         print("Cannot inspect " .. UnitName(unit))
     end
 end
-
-local function GetItemLevelFromArmory(unit)
-	local playerName = UnitName(unit)
-	-- print(playerName)
-
-	-- local http = require("socket.http")
-	local armory_url = "https://db.whitemane.org/armory/maelstrom/" .. playerName
-	-- print(armory_url)
-	-- local response, status_code = http.request(armory_url)
-	
-	-- if status_code == 200 then
-	-- 	local armory_html = response
-	-- 	-- Extract item level using pattern matching
-	-- 	local item_level = armory_html:match('<div class="item%-level">(.-)</div>')
-	-- 	if item_level then
-	-- 		-- Send item level to webhook endpoint
-	-- 		local webhook_url = "https://example.com/webhook"
-	-- 		local payload = "item_level=" .. item_level
-	-- 		local res, status = http.request {
-	-- 			url = webhook_url,
-	-- 			method = "POST",
-	-- 			headers = {
-	-- 				["Content-Type"] = "application/x-www-form-urlencoded",
-	-- 				["Content-Length"] = #payload
-	-- 			},
-	-- 			source = ltn12.source.string(payload)
-	-- 		}
-	-- 		if status == 200 then
-	-- 			print("Item level sent to webhook successfully.")
-	-- 		else
-	-- 			print("Failed to send item level to webhook.")
-	-- 		end
-	-- 	else
-	-- 		print("Item level not found in HTML.")
-	-- 	end
-	-- else
-	-- 	print("Failed to fetch Armory page.")
-	-- end
+local function HandleSlashCommand(msg)
+    -- Check if the command is "reset position"
+    if msg == "rs" then
+        -- Code to reset the position of your addon frame
+        print("Addon position reset")
+        itemLevelFrame:SetPoint("BOTTOMRIGHT", -300, 100)
+    
+    elseif msg == "l" then
+        -- Print a message indicating an unknown command
+        print("ItemLevel frame is locked")
+        itemLevelFrame:SetMovable(false)
+    
+    elseif msg == "ul" then
+        -- Print a message indicating an unknown command
+        print("ItemLevel frame is locked")
+        itemLevelFrame:SetMovable(true)
+    else
+    print("Unknown command. Usage: /il l or /il ul")
+    end
 end
+
+SLASH_ITEMLEVEL1 = "/il"
+SlashCmdList["ITEMLEVEL"] = HandleSlashCommand
 frame:RegisterEvent("INSPECT_READY")
 frame:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 
 
--- PlayerI = 0
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "UPDATE_MOUSEOVER_UNIT" then
 		-- inspectedUnit = "mouseover"
@@ -174,36 +159,9 @@ frame:SetScript("OnEvent", function(self, event, ...)
         local isPlayer = UnitIsPlayer(inspectedUnit)
         
         if unitExists and isPlayer  then
-			-- PlayerName[tostring(PlayerI)] = UnitName(inspectedUnit)
-			-- PlayerI= PlayerI + 1
             NotifyInspect(inspectedUnit)
 			UpdateItemLevel(inspectedUnit)
 			GetItemLevelFromArmory(inspectedUnit)
-			
-            -- Store the player's name in a global variable or SavedVariable
-            -- MyAddonPlayerName = UnitName("player")
-			
-			-- print('added to list' .. PlayerI)
-			-- table.insert(PlayerName, UnitName(inspectedUnit))
         end
-
-    -- elseif event == "UPDATE_MOUSEOVER_UNIT" then
-    --     inspectedUnit = "mouseover"
-    --     UpdateItemLevel(inspectedUnit)
     end
 end)
-
-
--- if event == "INSPECT_READY" then
-		
--- 	UpdateItemLevel("mouseover")
--- elseif event == "UPDATE_MOUSEOVER_UNIT" then
--- 	local unit = "mouseover"
--- 	local unitExists = UnitExists(unit)
--- 	local isPlayer = UnitIsPlayer(unit)
-	
--- 	if unitExists and isPlayer then
--- 		InspectPlayer(unit) -- Trigger inspection
--- 		UpdateItemLevel(unit)
--- 	end
--- end
