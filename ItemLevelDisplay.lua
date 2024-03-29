@@ -138,7 +138,7 @@ local function HandleSlashCommand(msg)
     
     elseif msg == "ul" then
         -- Print a message indicating an unknown command
-        print("ItemLevel frame is locked")
+        print("ItemLevel frame is unlocked")
         itemLevelFrame:SetMovable(true)
     else
     print("Unknown command. Usage: /il l or /il ul")
