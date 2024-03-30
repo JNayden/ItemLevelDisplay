@@ -3,7 +3,10 @@
 ## Version: 1.0.0
 ## Notes: Display average item level of the player. There is no configuration tab.
 ## Author: Nayden
-## SavedVariables: PlayerName
+
+## SavedVariables: HaveWeMetCount
+## SavedVariables: HaveWeMetCount1
+## SavedVariables: HaveWeMetCount2
 
 ItemLevelDisplay.lua
 

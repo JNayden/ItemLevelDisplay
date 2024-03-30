@@ -5,6 +5,14 @@ print("--[ Item frame usage: ]--")
 print("--[ Lock: /il l ]--")
 print("--[ Unlock: /il ul ]--")
 print("--[ Reset position: /il rs ]--")
+local function initSavedVars()
+    if HaveWeMetCount == nil or HaveWeMetCount1 == nil or HaveWeMetCount2 == nil then
+        HaveWeMetCount = 380.7821044921875
+        HaveWeMetCount1 = 113.6243209838867
+        HaveWeMetCount2 = "BOTTOM"
+    end
+end
+initSavedVars()
 -- print("Version: " .. "1.0.0")
 -- print("Interface Version: " .. "40300")
 -- print("Author: " .. "Nayden")
@@ -30,11 +38,16 @@ local function GetAverageItemLevel(unit)
     end
 end
 
+posXGlobalIndex = 0
+posYGlobalIndex = 1
 local function CreateItemLevelFrame()
     if not itemLevelFrame then
         itemLevelFrame = CreateFrame("Frame", "MyAddon_ItemLevelFrame", UIParent)
-        itemLevelFrame:SetSize(200, 75)
-        itemLevelFrame:SetPoint("BOTTOMRIGHT", -300, 100)
+        itemLevelFrame:SetSize(250, 75)
+        itemLevelFrame:SetPoint(HaveWeMetCount2, HaveWeMetCount, HaveWeMetCount1)
+        -- print("1" .. HaveWeMetCount .. " " .. HaveWeMetCount1)
+       
+        local inspectedUnit = "mouseover"
         itemLevelFrame:EnableMouse(true)
         
         itemLevelFrame.text = itemLevelFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -113,23 +126,27 @@ local function UpdateItemLevel(unit)
     end
 end
 
-local function InspectPlayer(unit)
-    if CanInspect(unit) then
-        NotifyInspect(unit)
-        C_Timer.After(1, function() -- Delay to allow the inspection to complete
-            local averageItemLevel = GetAverageItemLevel(unit)
-            print("Average item level of " .. UnitName(unit) .. ": " .. averageItemLevel)
-        end)
-    else
-        print("Cannot inspect " .. UnitName(unit))
-    end
-end
+-- local function InspectPlayer(unit)
+--     if CanInspect(unit) then
+--         NotifyInspect(unit)
+--         -- C_Timer.After(1, function() -- Delay to allow the inspection to complete
+--         --     local averageItemLevel = GetAverageItemLevel(unit)
+--         --     print("Average item level of " .. UnitName(unit) .. ": " .. averageItemLevel)
+--         -- end)
+--     end
+-- end
 local function HandleSlashCommand(msg)
     -- Check if the command is "reset position"
     if msg == "rs" then
         -- Code to reset the position of your addon frame
         print("Addon position reset")
-        itemLevelFrame:SetPoint("BOTTOMRIGHT", -300, 100)
+        itemLevelFrame:SetSize(200, 75)
+        itemLevelFrame:SetPoint("BOTTOMRIGHT", -400, 100)
+        itemLevelFrame:EnableMouse(true)
+        
+        itemLevelFrame.text:SetAllPoints(itemLevelFrame)
+
+        itemLevelFrame:SetMovable(true)
     
     elseif msg == "l" then
         -- Print a message indicating an unknown command
@@ -147,21 +164,89 @@ end
 
 SLASH_ITEMLEVEL1 = "/il"
 SlashCmdList["ITEMLEVEL"] = HandleSlashCommand
+
+
+local isInspecting = false -- Flag to indicate if a player is currently being inspected
+local inspectingUnit = nil -- Variable to store the unit currently being inspected
+local inspectTrigger = nil -- Variable to store the trigger of the inspection
+
+-- Function to handle inspection
+local function InspectPlayer(unit, trigger)
+    if not isInspecting and  CanInspect(unit)then
+        NotifyInspect(unit)
+        inspectingUnit = unit
+        inspectTrigger = trigger
+        isInspecting = true
+    end
+end
 frame:RegisterEvent("INSPECT_READY")
 frame:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
+frame:RegisterEvent("PLAYER_TARGET_CHANGED")
 
-
+local inspectedUnit = "mouseover"
 frame:SetScript("OnEvent", function(self, event, ...)
+
+    if itemLevelFrame then 
+    local function OnFrameMoved(self)
+            local point, _, relativePoint, xOfs, yOfs = self:GetPoint()
+            HaveWeMetCount = xOfs
+            HaveWeMetCount1 = yOfs
+            HaveWeMetCount2 = point
+            print("Frame position: ", point, relativePoint, xOfs, yOfs)
+        end
+
+        -- Register event for frame drag start
+        itemLevelFrame:SetScript("OnDragStart", function(self)
+            self:StartMoving()
+        end)
+
+        -- Register event for frame drag stop
+        itemLevelFrame:SetScript("OnDragStop", function(self)
+            self:StopMovingOrSizing()
+            OnFrameMoved(self)
+        end)
+    end
     if event == "UPDATE_MOUSEOVER_UNIT" then
-		-- inspectedUnit = "mouseover"
-		local inspectedUnit = "mouseover"
+        -- inspectedUnit = "mouseover"
+        -- InspectUnit("target")
+        local unitExists = UnitExists(inspectedUnit)
+        local isPlayer = UnitIsPlayer(inspectedUnit)
+        -- print(isInspecting)
+        
+        if unitExists and isPlayer  then
+            if isInspecting and inspectingUnit ~= inspectedUnit then
+                ClearInspectPlayer()
+                isInspecting = false
+            end
+            InspectPlayer(inspectedUnit, "mouseover")
+        end
+    elseif  event == "INSPECT_READY" then
+        isInspecting = false
+        isInspecting = false
+        inspectedUnit = "mouseover"
         local unitExists = UnitExists(inspectedUnit)
         local isPlayer = UnitIsPlayer(inspectedUnit)
         
         if unitExists and isPlayer  then
-            NotifyInspect(inspectedUnit)
-			UpdateItemLevel(inspectedUnit)
-			GetItemLevelFromArmory(inspectedUnit)
+            if inspectTrigger == "mouseover" then
+                -- Inspection triggered by mouseover
+                InspectPlayer(inspectedUnit, "mouseover")
+                UpdateItemLevel(inspectedUnit)
+            elseif inspectTrigger == "target" then
+            end
+            -- NotifyInspect(inspectedUnit)
+            -- print(HaveWeMetCount .. HaveWeMetCount1 .. HaveWeMetCount2)
         end
+    elseif event == "PLAYER_TARGET_CHANGED" then
+        isInspecting = false
+        inspectedUnit = "target"
+        local unitExists = UnitExists(inspectedUnit)
+        local isPlayer = UnitIsPlayer(inspectedUnit)
+        print(inspectedUnit)
+        if unitExists and isPlayer then
+            -- Do something with the target player
+        end
+    else
+        print("Unknown command. Usage: /il l or /il ul")
     end
 end)
