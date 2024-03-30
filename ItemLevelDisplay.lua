@@ -5,6 +5,9 @@ print("--[ Item frame usage: ]--")
 print("--[ Lock: /il l ]--")
 print("--[ Unlock: /il ul ]--")
 print("--[ Reset position: /il rs ]--")
+
+SLASH_RELOADUI1 = "/rl"
+SlashCmdList.RELOADUI = ReloadUI
 local function initSavedVars()
     if HaveWeMetCount == nil or HaveWeMetCount1 == nil or HaveWeMetCount2 == nil then
         HaveWeMetCount = 380.7821044921875
@@ -119,6 +122,7 @@ local function UpdateItemLevel(unit)
     if averageItemLevel > 0 then -- Only display if the item level is greater than 0
 		SetTextColor(averageItemLevel)
         itemLevelFrame.text:SetText(UnitName(unit) .. "'s Item Level: " .. round(averageItemLevel, 1))
+        -- SendChatMessage(UnitName(unit) .. "'s Item Level: " .. round(averageItemLevel, 1), "SAY")
         itemLevelFrame:Show() -- Show the frame
     else
         itemLevelFrame.text:SetText("") -- Clear the text
@@ -126,15 +130,15 @@ local function UpdateItemLevel(unit)
     end
 end
 
--- local function InspectPlayer(unit)
---     if CanInspect(unit) then
---         NotifyInspect(unit)
---         -- C_Timer.After(1, function() -- Delay to allow the inspection to complete
---         --     local averageItemLevel = GetAverageItemLevel(unit)
---         --     print("Average item level of " .. UnitName(unit) .. ": " .. averageItemLevel)
---         -- end)
---     end
--- end
+local function InspectPlayer(unit)
+    if CanInspect(unit) then
+        -- C_Timer.After(1, function() -- Delay to allow the inspection to complete
+            NotifyInspect(unit)
+            -- local averageItemLevel = GetAverageItemLevel(unit)
+            -- print("Average item level of " .. UnitName(unit) .. ": " .. averageItemLevel)
+        -- end)
+    end
+end
 local function HandleSlashCommand(msg)
     -- Check if the command is "reset position"
     if msg == "rs" then
@@ -169,23 +173,36 @@ SlashCmdList["ITEMLEVEL"] = HandleSlashCommand
 local isInspecting = false -- Flag to indicate if a player is currently being inspected
 local inspectingUnit = nil -- Variable to store the unit currently being inspected
 local inspectTrigger = nil -- Variable to store the trigger of the inspection
-
+local inspectTimer -- Timer for interval-based inspection
 -- Function to handle inspection
-local function InspectPlayer(unit, trigger)
-    if not isInspecting and  CanInspect(unit)then
-        NotifyInspect(unit)
-        inspectingUnit = unit
-        inspectTrigger = trigger
-        isInspecting = true
-    end
+local function InspectPlayerAndSet(unit, trigger)
+    NotifyInspect(unit)
+    inspectingUnit = unit
+    inspectTrigger = trigger
+    isInspecting = true
 end
+
 frame:RegisterEvent("INSPECT_READY")
+
 frame:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 frame:RegisterEvent("PLAYER_TARGET_CHANGED")
-
-local inspectedUnit = "mouseover"
+frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
+ -- TODO: da testvam tozi red na izpulnenie kato unit prosto sa mouseover i target
+--  if CheckInteractDistance(unit, 1) == 1 and CanInspect(unit) == 1 then
+--     x:RegisterEvent("INSPECT_READY")
+--     NotifyInspect(unit)
+--     x:SetScript("OnEvent",function(self,event,...)
+ 
+--     if event == "INSPECT_READY" then
+--        for i = 1, 17 do
+--           ...do stuff with items
+--        end
+--     end
+--     end)
+--  end
 frame:SetScript("OnEvent", function(self, event, ...)
-
+    -- print(event)
+    local inspectedUnit = ""
     if itemLevelFrame then 
     local function OnFrameMoved(self)
             local point, _, relativePoint, xOfs, yOfs = self:GetPoint()
@@ -207,46 +224,52 @@ frame:SetScript("OnEvent", function(self, event, ...)
         end)
     end
     if event == "UPDATE_MOUSEOVER_UNIT" then
-        -- inspectedUnit = "mouseover"
-        -- InspectUnit("target")
-        local unitExists = UnitExists(inspectedUnit)
-        local isPlayer = UnitIsPlayer(inspectedUnit)
-        -- print(isInspecting)
-        
-        if unitExists and isPlayer  then
-            if isInspecting and inspectingUnit ~= inspectedUnit then
-                ClearInspectPlayer()
-                isInspecting = false
-            end
-            InspectPlayer(inspectedUnit, "mouseover")
-        end
-    elseif  event == "INSPECT_READY" then
-        isInspecting = false
-        isInspecting = false
         inspectedUnit = "mouseover"
+        -- print(inspectedUnit)
         local unitExists = UnitExists(inspectedUnit)
         local isPlayer = UnitIsPlayer(inspectedUnit)
+
+        if inspectTrigger == "mouseover" or inspectTrigger == nil then
+            InspectPlayer(inspectedUnit)
+            UpdateItemLevel(inspectedUnit)
+        end
+    elseif event == "INSPECT_READY" then
+        inspectedUnit = "mouseover"
+        isInspecting = false
         
+        local unitExists = UnitExists(inspectedUnit)
+        local isPlayer = UnitIsPlayer(inspectedUnit)
         if unitExists and isPlayer  then
-            if inspectTrigger == "mouseover" then
+            if inspectTrigger == "mouseover" or inspectTrigger == nil then
                 -- Inspection triggered by mouseover
-                InspectPlayer(inspectedUnit, "mouseover")
+                InspectPlayerAndSet(inspectedUnit, "mouseover")
                 UpdateItemLevel(inspectedUnit)
-            elseif inspectTrigger == "target" then
             end
-            -- NotifyInspect(inspectedUnit)
-            -- print(HaveWeMetCount .. HaveWeMetCount1 .. HaveWeMetCount2)
         end
     elseif event == "PLAYER_TARGET_CHANGED" then
         isInspecting = false
         inspectedUnit = "target"
         local unitExists = UnitExists(inspectedUnit)
         local isPlayer = UnitIsPlayer(inspectedUnit)
-        print(inspectedUnit)
+      
         if unitExists and isPlayer then
-            -- Do something with the target player
+            InspectPlayerAndSet(inspectedUnit, "target")
+            UpdateItemLevel(inspectedUnit)
+        else
+            inspectTrigger = nil
         end
     else
         print("Unknown command. Usage: /il l or /il ul")
     end
 end)
+
+local function CheckInspectStatus()
+    if isInspecting then
+        -- Assume that the inspect window is still open
+        -- print("Inspect window is still open.")
+    else
+        -- Assume that the inspect window has been closed
+        print("Inspect window has been closed.")
+    end
+end
+
